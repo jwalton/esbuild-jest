@@ -9,4 +9,5 @@ export interface Options {
   },
   target?: string
   format?: string
+  babelFiles?: string | RegExp
 }

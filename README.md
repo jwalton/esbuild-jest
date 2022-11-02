@@ -35,20 +35,23 @@ export interface Options {
   },
   target?: string
   format?: string
+  // Regex used to determine which files will be transformed with babel.
+  // Use empty string to disable.  Defaults to /ock\(/ to catch jest mocks.
+  babelFiles?: string
 }
 ```
 
 ```js
 {
   "transform": {
-    "^.+\\.tsx?$": [ 
-      "esbuild-jest", 
-      { 
+    "^.+\\.tsx?$": [
+      "esbuild-jest",
+      {
         sourcemap: true,
         loaders: {
           '.spec.ts': 'tsx'
         }
-      } 
+      }
     ]
   }
 }

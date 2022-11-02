@@ -8,29 +8,43 @@ import { Options } from './options'
 import { getExt, loaders } from './utils'
 
 const createTransformer = (options?: Options) => ({
-  process(content: string, 
-    filename: string, 
-    config: Config.ProjectConfig, 
+  process(content: string,
+    filename: string,
+    config: Config.ProjectConfig,
     opts?: JestTransformOptions
   ) {
     const sources = { code: content }
     const ext = getExt(filename), extName = extname(filename).slice(1)
 
     const enableSourcemaps = options?.sourcemap || false
-    const loader = (options?.loaders && options?.loaders[ext] 
+    const loader = (options?.loaders && options?.loaders[ext]
       ? options.loaders[ext]
       : loaders.includes(extName) ? extName: 'text'
     ) as Loader
-    const sourcemaps: Partial<TransformOptions> = enableSourcemaps 
-      ? { sourcemap: true, sourcesContent: false, sourcefile: filename } 
+    const sourcemaps: Partial<TransformOptions> = enableSourcemaps
+      ? { sourcemap: true, sourcesContent: false, sourcefile: filename }
       : {}
 
-    /// this logic or code from 
+    // Work out which files we should preprocess with babel.
+    let babelRegex: RegExp | undefined = /ock\(/
+    if ('babelFiles' in options) {
+      if (options.babelFiles) {
+        if (typeof options.babelFiles === 'string') {
+          babelRegex = new RegExp(options.babelFiles)
+        } else {
+          babelRegex = options.babelFiles
+        }
+      } else {
+        babelRegex = undefined
+      }
+    }
+
+    /// this logic or code from
     /// https://github.com/threepointone/esjest-transform/blob/main/src/index.js
     /// this will support the jest.mock
     /// https://github.com/aelbore/esbuild-jest/issues/12
     /// TODO: transform the jest.mock to a function using babel traverse/parse then hoist it
-    if (sources.code.indexOf("ock(") >= 0 || opts?.instrument) {
+    if ((babelRegex && sources.code.match(babelRegex)) || opts?.instrument) {
       const source = require('./transformer').babelTransform({
         sourceText: content,
         sourcePath: filename,
@@ -48,21 +62,21 @@ const createTransformer = (options?: Options) => ({
       ...(options?.jsxFragment ? { jsxFragment: options.jsxFragment }: {}),
       ...sourcemaps
     })
-  
+
     let { map, code } = result;
     if (enableSourcemaps) {
       map = {
         ...JSON.parse(result.map),
         sourcesContent: null,
       }
-  
+
       // Append the inline sourcemap manually to ensure the "sourcesContent"
       // is null. Otherwise, breakpoints won't pause within the actual source.
       code = code + '\n//# sourceMappingURL=data:application/json;base64,' + Buffer.from(JSON.stringify(map)).toString('base64')
     } else {
       map = null
     }
-  
+
     return { code, map }
   }
 })
